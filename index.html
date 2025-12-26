@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to PowerPoint Converter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .drop-zone {
+            border: 3px dashed #ccc;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #007bff;
+            background: #f0f7ff;
+        }
+        .drop-zone p {
+            margin: 0;
+            font-size: 18px;
+            color: #666;
+        }
+        .drop-zone input {
+            display: none;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #0056b3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background: #545b62;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover:not(:disabled) {
+            background: #1e7e34;
+        }
+        .settings {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .settings label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #555;
+        }
+        .settings select, .settings input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .progress-container {
+            display: none;
+            margin-bottom: 20px;
+        }
+        .progress-bar {
+            height: 24px;
+            background: #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #00d4ff);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+        }
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .image-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .image-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .image-card .card-footer {
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #eee;
+        }
+        .image-card .page-num {
+            font-weight: 600;
+            color: #333;
+        }
+        .image-card .download-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF to PowerPoint Converter</h1>
+
+    <div class="drop-zone" id="dropZone">
+        <p>Drag & drop a PDF here, or click to select</p>
+        <input type="file" id="fileInput" accept=".pdf">
+    </div>
+
+    <div class="settings">
+        <label>
+            Format:
+            <select id="formatSelect">
+                <option value="image/png">PNG</option>
+                <option value="image/jpeg" selected>JPEG</option>
+                <option value="image/webp">WebP</option>
+            </select>
+        </label>
+        <label>
+            Quality:
+            <input type="range" id="qualitySlider" min="0.1" max="1" step="0.1" value="0.9">
+            <span id="qualityValue">90%</span>
+        </label>
+        <label>
+            Scale:
+            <select id="scaleSelect">
+                <option value="1">1x (72 DPI)</option>
+                <option value="2" selected>2x (144 DPI)</option>
+                <option value="3">3x (216 DPI)</option>
+                <option value="4">4x (288 DPI)</option>
+            </select>
+        </label>
+    </div>
+
+    <div class="progress-container" id="progressContainer">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill">0%</div>
+        </div>
+        <div class="status" id="statusText">Processing...</div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-success" id="exportPptBtn" disabled>Export to PowerPoint</button>
+        <button class="btn-primary" id="downloadAllBtn" disabled>Download All as ZIP</button>
+        <button class="btn-secondary" id="clearBtn" disabled>Clear</button>
+    </div>
+
+    <div class="images-grid" id="imagesGrid"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <script type="module">
+        import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/+esm';
+        import JSZip from 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm';
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.worker.min.mjs';
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const imagesGrid = document.getElementById('imagesGrid');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const statusText = document.getElementById('statusText');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportPptBtn = document.getElementById('exportPptBtn');
+        const formatSelect = document.getElementById('formatSelect');
+        const qualitySlider = document.getElementById('qualitySlider');
+        const qualityValue = document.getElementById('qualityValue');
+        const scaleSelect = document.getElementById('scaleSelect');
+
+        let extractedImages = [];
+        let pageDimensions = [];
+        let currentFileName = '';
+
+        // Quality slider display
+        qualitySlider.addEventListener('input', () => {
+            qualityValue.textContent = Math.round(qualitySlider.value * 100) + '%';
+        });
+
+        // Drag and drop handlers
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'application/pdf') {
+                processFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) processFile(file);
+        });
+
+        // Clear button
+        clearBtn.addEventListener('click', () => {
+            imagesGrid.innerHTML = '';
+            extractedImages = [];
+            downloadAllBtn.disabled = true;
+            clearBtn.disabled = true;
+            exportPptBtn.disabled = true;
+            progressContainer.style.display = 'none';
+        });
+
+        // Download all as ZIP
+        downloadAllBtn.addEventListener('click', async () => {
+            if (extractedImages.length === 0) return;
+
+            downloadAllBtn.disabled = true;
+            downloadAllBtn.textContent = 'Creating ZIP...';
+
+            const zip = new JSZip();
+            const format = formatSelect.value;
+            const ext = format.split('/')[1];
+
+            for (let i = 0; i < extractedImages.length; i++) {
+                const dataUrl = extractedImages[i];
+                const base64 = dataUrl.split(',')[1];
+                zip.file(`page-${String(i + 1).padStart(3, '0')}.${ext}`, base64, { base64: true });
+            }
+
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentFileName.replace('.pdf', '')}-images.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            downloadAllBtn.disabled = false;
+            downloadAllBtn.textContent = 'Download All as ZIP';
+        });
+
+        // Export to PowerPoint
+        exportPptBtn.addEventListener('click', async () => {
+            if (extractedImages.length === 0) return;
+
+            exportPptBtn.disabled = true;
+            exportPptBtn.textContent = 'Creating PowerPoint...';
+
+            try {
+                const pptx = new PptxGenJS();
+
+                // Set presentation properties
+                pptx.author = 'PDF to PowerPoint Converter';
+                pptx.title = currentFileName.replace('.pdf', '');
+                pptx.subject = 'Converted from PDF';
+
+                for (let i = 0; i < extractedImages.length; i++) {
+                    const dims = pageDimensions[i];
+                    const aspectRatio = dims.width / dims.height;
+
+                    // Set slide size based on page dimensions
+                    // Standard is 10x7.5 inches (landscape) or 7.5x10 (portrait)
+                    if (i === 0) {
+                        if (aspectRatio >= 1) {
+                            // Landscape
+                            pptx.defineLayout({ name: 'PDF', width: 10, height: 10 / aspectRatio });
+                        } else {
+                            // Portrait
+                            pptx.defineLayout({ name: 'PDF', width: 7.5, height: 7.5 / aspectRatio });
+                        }
+                        pptx.layout = 'PDF';
+                    }
+
+                    const slide = pptx.addSlide();
+
+                    // Add image to fill the entire slide
+                    slide.addImage({
+                        data: extractedImages[i],
+                        x: 0,
+                        y: 0,
+                        w: '100%',
+                        h: '100%'
+                    });
+                }
+
+                // Generate and download
+                await pptx.writeFile({ fileName: `${currentFileName.replace('.pdf', '')}.pptx` });
+
+            } catch (error) {
+                console.error('Error creating PowerPoint:', error);
+                alert('Error creating PowerPoint: ' + error.message);
+            }
+
+            exportPptBtn.disabled = false;
+            exportPptBtn.textContent = 'Export to PowerPoint';
+        });
+
+        async function processFile(file) {
+            currentFileName = file.name;
+            extractedImages = [];
+            pageDimensions = [];
+            imagesGrid.innerHTML = '';
+            progressContainer.style.display = 'block';
+            downloadAllBtn.disabled = true;
+            clearBtn.disabled = true;
+            exportPptBtn.disabled = true;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const numPages = pdf.numPages;
+
+                statusText.textContent = `Processing ${numPages} page${numPages > 1 ? 's' : ''}...`;
+
+                const format = formatSelect.value;
+                const quality = parseFloat(qualitySlider.value);
+                const scale = parseFloat(scaleSelect.value);
+                const ext = format.split('/')[1];
+
+                for (let i = 1; i <= numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale });
+
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+
+                    await page.render({
+                        canvasContext: context,
+                        viewport: viewport
+                    }).promise;
+
+                    const imageDataUrl = canvas.toDataURL(format, quality);
+                    extractedImages.push(imageDataUrl);
+                    pageDimensions.push({ width: viewport.width, height: viewport.height });
+
+                    // Create image card
+                    const card = document.createElement('div');
+                    card.className = 'image-card';
+                    card.innerHTML = `
+                        <img src="${imageDataUrl}" alt="Page ${i}">
+                        <div class="card-footer">
+                            <span class="page-num">Page ${i}</span>
+                            <button class="btn-primary download-btn" data-index="${i - 1}">
+                                Download
+                            </button>
+                        </div>
+                    `;
+                    imagesGrid.appendChild(card);
+
+                    // Update progress
+                    const progress = Math.round((i / numPages) * 100);
+                    progressFill.style.width = progress + '%';
+                    progressFill.textContent = progress + '%';
+                    statusText.textContent = `Processed page ${i} of ${numPages}`;
+                }
+
+                statusText.textContent = `Done! Extracted ${numPages} image${numPages > 1 ? 's' : ''}.`;
+                downloadAllBtn.disabled = false;
+                clearBtn.disabled = false;
+                exportPptBtn.disabled = false;
+
+                // Add download handlers
+                document.querySelectorAll('.download-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        downloadImage(index);
+                    });
+                });
+
+            } catch (error) {
+                console.error('Error processing PDF:', error);
+                statusText.textContent = 'Error: ' + error.message;
+                progressFill.style.width = '0%';
+            }
+        }
+
+        function downloadImage(index) {
+            const dataUrl = extractedImages[index];
+            const format = formatSelect.value;
+            const ext = format.split('/')[1];
+
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `${currentFileName.replace('.pdf', '')}-page-${index + 1}.${ext}`;
+            a.click();
+        }
+    </script>
+</body>
+</html>
