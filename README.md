@@ -32,3 +32,7 @@ Works in all modern browsers (Chrome, Firefox, Safari, Edge).
 ## Inspiration
 
 Inspired by Simon Willison's [OCR tool](https://tools.simonwillison.net/ocr) ([source](https://github.com/simonw/tools/blob/main/ocr.html)), which demonstrates client-side PDF processing using PDF.js.
+
+## Development
+
+The [`/claude`](./claude) folder contains [Claude Code](https://claude.ai/claude-code) transcripts documenting how this tool was built. Inspired by Simon Willison's [claude-code-transcripts](https://github.com/simonw/claude-code-transcripts) project ([blog post](https://simonwillison.net/2025/Dec/25/claude-code-transcripts/)).
